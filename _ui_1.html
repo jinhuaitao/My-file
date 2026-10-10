@@ -266,7 +266,7 @@
                             </div>
                             <p class="text-[15px] font-semibold text-slate-800">{{ dragActive ? '松开即可上传' : '拖拽文件或文件夹到此处' }}</p>
                             <p class="mt-1.5 text-sm text-slate-500">也可以点击选择文件，文件夹会自动保留目录结构</p>
-                            <div class="mt-6 flex flex-wrap items-center justify-center gap-2.5" @click.stop>
+                            <div class="pointer-events-auto mt-6 flex flex-wrap items-center justify-center gap-2.5" @click.stop>
                                 <button @click="pickFiles" class="flex h-9 items-center gap-2 rounded-xl bg-slate-900 px-4 text-[13px] font-medium text-white transition hover:bg-slate-800 active:scale-95">
                                     <i class="fa-regular fa-file text-xs"></i>选择文件
                                 </button>
