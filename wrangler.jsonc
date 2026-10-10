@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+
+  // Worker 名称。自动创建的资源会以此名称为前缀命名。
+  // 注意：Cloudflare Dashboard 里 "Project name" 必须与此处完全一致。
+  "name": "r2-file-manager",
+
+  "main": "index.js",
+
+  // 不能晚于今天
+  "compatibility_date": "2026-10-01",
+
+  "workers_dev": true,
+
+  // 开启日志，排查线上问题必备
+  "observability": { "enabled": true },
+  // 让日志里的异常堆栈能映射回源码真实行号
+  "upload_source_maps": true,
+
+  // ★ 自动供给的关键：R2 绑定里【故意不写 bucket_name】
+  // 部署时 Cloudflare 会自动创建一个新 bucket 并绑定到 env.MY_BUCKET
+  // 若写成 { "binding": "MY_BUCKET", "bucket_name": "xxx" } 就变成手动指定，不会自动创建
+  "r2_buckets": [
+    { "binding": "MY_BUCKET" }
+  ]
+}
