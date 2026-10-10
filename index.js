@@ -1094,7 +1094,7 @@ function getHtml(isInitialized) {
                                     <i class="fa-solid fa-rotate-right text-[10px]"></i>刷新
                                 </button>
                                 <button v-if="uploadHistory.length" @click="clearUploadHistory" class="flex h-8 items-center gap-1.5 rounded-lg border border-red-100 bg-red-50 px-3 text-[12px] font-medium text-red-500 transition hover:bg-red-100">
-                                    <i class="fa-regular fa-trash-can text-[10px]"></i>清空
+                                    <i class="fa-regular fa-trash-can text-[10px]"></i>清空记录
                                 </button>
                             </div>
                         </div>
