@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#4f46e5">
+    <title>Cloud Space</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'] },
+                    boxShadow: {
+                        soft: '0 1px 2px 0 rgba(15,23,42,0.04), 0 1px 3px 0 rgba(15,23,42,0.06)',
+                        card: '0 4px 16px -4px rgba(15,23,42,0.08), 0 2px 6px -2px rgba(15,23,42,0.04)',
+                        pop: '0 16px 40px -12px rgba(15,23,42,0.18), 0 4px 12px -4px rgba(15,23,42,0.08)'
+                    },
+                    borderRadius: { '4xl': '28px' }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; }
+        ::-webkit-scrollbar { width: 0px; height: 0px; background: transparent; }
+        .scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+        .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+        .scroll-thin::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.25); border-radius: 999px; }
+        .scroll-thin::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.4); }
+
+        .nav-item { transition: background-color .18s ease, color .18s ease; }
+        .nav-item .nav-bar { transform: scaleY(0); transition: transform .18s cubic-bezier(.4,0,.2,1); }
+        .nav-item.is-active .nav-bar { transform: scaleY(1); }
+
+        input[type="checkbox"].cbx {
+            appearance: none; width: 18px; height: 18px; border-radius: 5px;
+            border: 1.5px solid #cbd5e1; background: #fff; cursor: pointer;
+            position: relative; transition: all .15s ease; flex: none;
+        }
+        input[type="checkbox"].cbx:hover { border-color: #94a3b8; }
+        input[type="checkbox"].cbx:checked { background: #4f46e5; border-color: #4f46e5; }
+        input[type="checkbox"].cbx:checked::after {
+            content: '\\f00c'; font-family: 'Font Awesome 6 Free'; font-weight: 900;
+            color: #fff; font-size: 10px; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .ctx { position: fixed; z-index: 5000; min-width: 190px; padding: 6px;
+               background: rgba(255,255,255,.92); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+               border-radius: 14px; border: 1px solid rgba(15,23,42,.06);
+               box-shadow: 0 16px 40px -12px rgba(15,23,42,.22), 0 4px 12px -4px rgba(15,23,42,.1);
+               animation: pop .14s cubic-bezier(.16,1,.3,1); transform-origin: top left; }
+        .ctx-item { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 9px;
+                    font-size: 13.5px; font-weight: 500; color: #334155; cursor: pointer; transition: background-color .12s ease; }
+        .ctx-item i { width: 16px; text-align: center; font-size: 13px; }
+        .ctx-item:hover { background: #f1f5f9; }
+        .ctx-item.is-danger { color: #dc2626; }
+        .ctx-item.is-danger:hover { background: #fef2f2; }
+        .ctx-sep { height: 1px; background: rgba(15,23,42,.06); margin: 5px 8px; }
+
+        .card-hover { transition: transform .22s cubic-bezier(.25,.8,.25,1), box-shadow .22s ease, border-color .22s ease; }
+        .card-hover:hover { transform: translateY(-3px); box-shadow: 0 12px 28px -10px rgba(15,23,42,.16); }
+
+        .fade-enter-active, .fade-leave-active { transition: opacity .18s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+        .pop-enter-active { transition: all .28s cubic-bezier(.16,1,.3,1); }
+        .pop-leave-active { transition: all .16s ease; }
+        .pop-enter-from, .pop-leave-to { opacity: 0; transform: scale(.96) translateY(8px); }
+        .rise-enter-active, .rise-leave-active { transition: all .32s cubic-bezier(.16,1,.3,1); }
+        .rise-enter-from, .rise-leave-to { transform: translateY(120%); opacity: 0; }
+
+        @keyframes pop { from { opacity: 0; transform: scale(.95); } to { opacity: 1; transform: scale(1); } }
+        @keyframes floaty { 0%,100% { transform: translate3d(0,0,0); } 50% { transform: translate3d(0,-16px,0); } }
+        @keyframes shimmer { 100% { transform: translateX(100%); } }
+        .skel { position: relative; overflow: hidden; background: #eef2f7; }
+        .skel::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+                       background: linear-gradient(90deg, transparent, rgba(255,255,255,.7), transparent);
+                       animation: shimmer 1.4s infinite; }
+        .prose-custom h1 { font-size: 1.5em; font-weight: 600; margin: .8em 0 .4em; }
+        .prose-custom h2 { font-size: 1.22em; font-weight: 600; margin: .8em 0 .4em; }
+        .prose-custom h3 { font-size: 1.06em; font-weight: 600; margin: .7em 0 .3em; }
+        .prose-custom p { margin: .55em 0; line-height: 1.75; }
+        .prose-custom ul { list-style: disc; padding-left: 1.4em; margin: .55em 0; }
+        .prose-custom ol { list-style: decimal; padding-left: 1.4em; margin: .55em 0; }
+        .prose-custom blockquote { border-left: 3px solid #c7d2fe; padding-left: .9em; color: #64748b; margin: .7em 0; }
+        .prose-custom pre { background: #0f172a; color: #e2e8f0; padding: .9em 1em; border-radius: 10px; overflow-x: auto; margin: .7em 0; }
+        .prose-custom code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: #f1f5f9;
+                             padding: .12em .38em; border-radius: 5px; font-size: .88em; }
+        .prose-custom pre code { background: transparent; padding: 0; color: inherit; }
+        .prose-custom a { color: #4f46e5; text-decoration: underline; text-underline-offset: 2px; }
+        .prose-custom table { border-collapse: collapse; margin: .7em 0; }
+        .prose-custom th, .prose-custom td { border: 1px solid #e2e8f0; padding: .4em .7em; }
+        [v-cloak] { display: none; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-700 antialiased">
+<div id="app" v-cloak class="h-full" @click="closeContextMenu" @contextmenu="closeContextMenu">
+
+    <transition name="fade">
+    <div v-if="!isLoggedIn" class="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-slate-50 p-4">
+        <div class="pointer-events-none absolute inset-0 overflow-hidden">
+            <div class="absolute -top-40 -left-32 h-[420px] w-[420px] rounded-full bg-indigo-300/35 blur-[110px]"></div>
+            <div class="absolute -bottom-44 -right-24 h-[460px] w-[460px] rounded-full bg-sky-300/35 blur-[110px]"></div>
+            <div class="absolute left-1/2 top-1/3 h-[300px] w-[300px] -translate-x-1/2 rounded-full bg-violet-200/40 blur-[100px]" style="animation: floaty 9s ease-in-out infinite"></div>
+        </div>
+
+        <div class="relative z-10 w-full max-w-[380px]">
+            <div class="rounded-4xl border border-white/70 bg-white/80 p-8 shadow-pop backdrop-blur-2xl">
+                <div class="mb-8 text-center">
+                    <div class="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-xl text-white shadow-lg shadow-indigo-500/30">
+                        <i class="fa-solid fa-cloud"></i>
+                    </div>
+                    <h1 class="text-[22px] font-semibold tracking-tight text-slate-900">{{ !serverInitialized ? '初始化系统' : 'Cloud Space' }}</h1>
+                    <p class="mt-1.5 text-sm text-slate-500">{{ !serverInitialized ? '创建您的管理员账户' : '登录以进入私有云空间' }}</p>
+                </div>
+
+                <form @submit.prevent="handleAuth" class="space-y-4">
+                    <div>
+                        <label class="mb-1.5 block text-xs font-medium text-slate-500">用户名</label>
+                        <div class="relative">
+                            <i class="fa-regular fa-user pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
+                            <input v-model="authForm.username" type="text" autocomplete="username" placeholder="请输入用户名"
+                                   class="h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10" required>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="mb-1.5 block text-xs font-medium text-slate-500">密码</label>
+                        <div class="relative">
+                            <i class="fa-solid fa-lock pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
+                            <input v-model="authForm.password" type="password" autocomplete="current-password" placeholder="请输入密码"
+                                   class="h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10" required>
+                        </div>
+                    </div>
+
+                    <p v-if="authError" class="flex items-center gap-2 rounded-xl bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-600">
+                        <i class="fa-solid fa-circle-exclamation"></i><span>{{ authError }}</span>
+                    </p>
+
+                    <button type="submit" :disabled="authLoading"
+                            class="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-[.98] disabled:opacity-60">
+                        <i v-if="authLoading" class="fa-solid fa-circle-notch fa-spin"></i>
+                        <span>{{ authLoading ? '处理中…' : (!serverInitialized ? '完成初始化' : '登 录') }}</span>
+                    </button>
+                </form>
+
+                <p class="mt-6 text-center text-[11px] leading-relaxed text-slate-400">
+                    {{ !serverInitialized ? '密码至少 6 位，请妥善保管' : '受 Cloudflare R2 加密存储保护' }}
+                </p>
+            </div>
+        </div>
+    </div>
+    </transition>
+
+    <div v-if="isLoggedIn" class="flex h-full w-full">
+
+        <div v-if="mobileMenuOpen" @click.stop="mobileMenuOpen = false"
+             class="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-sm transition-opacity md:hidden"></div>
+
+        <aside :class="['fixed z-40 flex h-full w-[264px] flex-none flex-col border-r border-slate-200/80 bg-white transition-transform duration-300 ease-out md:static md:translate-x-0',
+                        mobileMenuOpen ? 'translate-x-0' : '-translate-x-full']" @click.stop>
+            <div class="flex items-center gap-3 px-5 py-5">
+                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/25">
+                    <i class="fa-solid fa-cloud text-sm"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="truncate text-[15px] font-semibold leading-tight text-slate-900">Cloud Space</div>
+                    <div class="text-[11px] leading-tight text-slate-400">R2 私有云盘</div>
+                </div>
+            </div>
+
+            <nav class="scroll-thin flex-1 space-y-1 overflow-y-auto px-3 pb-4">
+                <div class="px-3 pb-2 pt-3 text-[10px] font-semibold uppercase tracking-[.12em] text-slate-400">存储</div>
+
+                <div @click="switchView('uploads')" :class="['nav-item relative flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-sm', currentView === 'uploads' ? 'is-active bg-indigo-50 font-semibold text-indigo-600' : 'font-medium text-slate-600 hover:bg-slate-50']">
+                    <span class="nav-bar absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r bg-indigo-500"></span>
+                    <i class="fa-solid fa-cloud-arrow-up w-4 text-center"></i>
+                    <span>传输中心</span>
+                    <span v-if="activeUploadCount > 0" class="ml-auto rounded-md bg-indigo-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">{{ activeUploadCount }}</span>
+                </div>
+
+                <div @click="switchView('files')" :class="['nav-item relative flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-sm', currentView === 'files' ? 'is-active bg-indigo-50 font-semibold text-indigo-600' : 'font-medium text-slate-600 hover:bg-slate-50']">
+                    <span class="nav-bar absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r bg-indigo-500"></span>
+                    <i class="fa-regular fa-folder-open w-4 text-center"></i>
+                    <span>全部文件</span>
+                </div>
+
+                <div @click="switchView('shares')" :class="['nav-item relative flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-sm', currentView === 'shares' ? 'is-active bg-indigo-50 font-semibold text-indigo-600' : 'font-medium text-slate-600 hover:bg-slate-50']">
+                    <span class="nav-bar absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r bg-indigo-500"></span>
+                    <i class="fa-solid fa-share-nodes w-4 text-center"></i>
+                    <span>分享管理</span>
+                </div>
+
+                <div @click="switchView('trash')" :class="['nav-item relative flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-sm', currentView === 'trash' ? 'is-active bg-indigo-50 font-semibold text-indigo-600' : 'font-medium text-slate-600 hover:bg-slate-50']">
+                    <span class="nav-bar absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r bg-indigo-500"></span>
+                    <i class="fa-solid fa-trash-can-arrow-up w-4 text-center"></i>
+                    <span>回收站</span>
+                    <span v-if="trashFiles.length > 0" class="ml-auto text-[10px] font-medium text-slate-400">{{ trashFiles.length }}</span>
+                </div>
+
+                <div class="px-3 pb-2 pt-5 text-[10px] font-semibold uppercase tracking-[.12em] text-slate-400">系统</div>
+
+                <div @click="switchView('settings')" :class="['nav-item relative flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-sm', currentView === 'settings' ? 'is-active bg-indigo-50 font-semibold text-indigo-600' : 'font-medium text-slate-600 hover:bg-slate-50']">
+                    <span class="nav-bar absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r bg-indigo-500"></span>
+                    <i class="fa-solid fa-sliders w-4 text-center"></i>
+                    <span>系统设置</span>
+                </div>
+            </nav>
+
+            <div class="border-t border-slate-100 p-3">
+                <div class="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5">
+                    <div class="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-[11px] font-semibold text-white">
+                        {{ (username || 'A').slice(0, 1).toUpperCase() }}
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="truncate text-[13px] font-medium text-slate-800">{{ username || '管理员' }}</div>
+                        <div class="flex items-center gap-1.5 text-[11px] text-slate-400">
+                            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>已连接
+                        </div>
+                    </div>
+                    <button @click="logout" title="退出登录" class="flex h-8 w-8 flex-none items-center justify-center rounded-lg text-slate-400 transition hover:bg-white hover:text-slate-700">
+                        <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <main class="flex h-full min-w-0 flex-1 flex-col bg-slate-50">
+
+            <div class="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200/80 bg-white/85 px-4 py-3 backdrop-blur-xl md:hidden" @click.stop>
+                <button @click="mobileMenuOpen = true" class="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600">
+                    <i class="fa-solid fa-bars text-sm"></i>
+                </button>
+                <span class="text-sm font-semibold text-slate-800">{{ viewTitle }}</span>
+            </div>
+
+            <div class="scroll-thin flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
+
+                <div v-if="loading" class="mx-auto max-w-6xl space-y-4">
+                    <div class="skel h-8 w-52 rounded-xl"></div>
+                    <div class="skel h-[132px] rounded-2xl"></div>
+                    <div class="skel h-[280px] rounded-2xl"></div>
+                </div>
+
+                <div v-else-if="currentView === 'uploads'" class="mx-auto max-w-5xl space-y-8" @click.stop>
+                    <div>
+                        <h1 class="text-xl font-semibold tracking-tight text-slate-900">传输中心</h1>
+                        <p class="mt-1 text-sm text-slate-500">上传文件或整个文件夹，当前目标目录
+                            <span class="rounded-md bg-indigo-50 px-1.5 py-0.5 font-medium text-indigo-600">{{ currentPath || '根目录' }}</span>
+                        </p>
+                    </div>
+
+                    <div @dragover.prevent="dragActive = true" @dragleave.prevent="dragActive = false" @drop.prevent="handleDrop"
+                         :class="['group relative cursor-pointer overflow-hidden rounded-4xl border-2 border-dashed px-8 py-14 text-center transition-all duration-200',
+                                  dragActive ? 'border-indigo-400 bg-indigo-50/70' : 'border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/30']"
+                         @click="pickFiles">
+                        <div class="pointer-events-none relative z-10">
+                            <div :class="['mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl text-2xl transition-all duration-300',
+                                          dragActive ? 'scale-110 bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'bg-indigo-50 text-indigo-500 group-hover:scale-105']">
+                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                            </div>
+                            <p class="text-[15px] font-semibold text-slate-800">{{ dragActive ? '松开即可上传' : '拖拽文件或文件夹到此处' }}</p>
+                            <p class="mt-1.5 text-sm text-slate-500">也可以点击选择文件，文件夹会自动保留目录结构</p>
+                            <div class="mt-6 flex flex-wrap items-center justify-center gap-2.5" @click.stop>
+                                <button @click="pickFiles" class="flex h-9 items-center gap-2 rounded-xl bg-slate-900 px-4 text-[13px] font-medium text-white transition hover:bg-slate-800 active:scale-95">
+                                    <i class="fa-regular fa-file text-xs"></i>选择文件
+                                </button>
+                                <button @click="pickFolder" class="flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-[13px] font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 active:scale-95">
+                                    <i class="fa-regular fa-folder text-xs"></i>选择文件夹
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="uploadQueue.length > 0">
+                        <div class="mb-3 flex items-center justify-between">
+                            <h2 class="text-sm font-semibold text-slate-800">上传队列
+                                <span class="ml-1 font-normal text-slate-400">{{ activeUploadCount }} 个进行中</span>
+                            </h2>
+                            <button v-if="activeUploadCount === 0" @click="clearQueue" class="text-[13px] font-medium text-slate-500 transition hover:text-indigo-600">清空列表</button>
+                        </div>
+                        <div class="space-y-2.5">
+                            <div v-for="item in uploadQueue" :key="item.id" class="flex items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-soft">
+                                <div :class="['flex h-10 w-10 flex-none items-center justify-center rounded-xl text-sm',
+                                              item.status === 'success' ? 'bg-emerald-50 text-emerald-500' : item.status === 'error' ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-400']">
+                                    <i :class="item.status === 'success' ? 'fa-solid fa-check' : item.status === 'error' ? 'fa-solid fa-xmark' : 'fa-regular fa-file'"></i>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="mb-1.5 flex items-baseline justify-between gap-3">
+                                        <span class="truncate text-[13px] font-medium text-slate-700">{{ item.relativePath || item.file.name }}</span>
+                                        <span :class="['flex-none text-[11px] font-medium',
+                                                       item.status === 'success' ? 'text-emerald-600' : item.status === 'error' ? 'text-red-500' : 'text-slate-400']">{{ item.statusText }}</span>
+                                    </div>
+                                    <div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                                        <div :class="['h-full rounded-full transition-all duration-300',
+                                                      item.status === 'error' ? 'bg-red-400' : item.status === 'success' ? 'bg-emerald-500' : 'bg-indigo-500']"
+                                             :style="{ width: item.progress + '%' }"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="mb-3 flex items-center justify-between">
+                            <h2 class="text-sm font-semibold text-slate-800">最近上传</h2>
+                            <div class="flex gap-2">
+                                <button @click="fetchUploadHistory" class="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[12px] font-medium text-slate-600 transition hover:bg-slate-50">
+                                    <i class="fa-solid fa-rotate-right text-[10px]"></i>刷新
+                                </button>
+                                <button v-if="uploadHistory.length" @click="clearUploadHistory" class="flex h-8 items-center gap-1.5 rounded-lg border border-red-100 bg-red-50 px-3 text-[12px] font-medium text-red-500 transition hover:bg-red-100">
+                                    <i class="fa-regular fa-trash-can text-[10px]"></i>清空
+                                </button>
+                            </div>
+                        </div>
+
+                        <div v-if="uploadHistory.length === 0" class="rounded-2xl border border-slate-100 bg-white py-14 text-center shadow-soft">
+                            <i class="fa-regular fa-clock mb-3 text-3xl text-slate-200"></i>
+                            <p class="text-sm text-slate-400">暂无上传记录</p>
+                        </div>
+
+                        <div v-else class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-soft">
+                            <table class="w-full text-left text-sm">
+                                <thead class="border-b border-slate-100 bg-slate-50/70 text-[11px] uppercase tracking-wide text-slate-400">
+                                    <tr>
+                                        <th class="px-4 py-3 font-medium sm:px-5">文件名</th>
+                                        <th class="hidden w-28 px-5 py-3 font-medium sm:table-cell">大小</th>
+                                        <th class="w-20 px-4 py-3 text-right font-medium sm:w-44 sm:px-5">时间</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-50">
+                                    <tr v-for="(log, idx) in uploadHistory" :key="idx" class="transition hover:bg-slate-50/60">
+                                        <td class="max-w-0 truncate px-4 py-3.5 font-medium text-slate-700 sm:px-5">{{ log.name }}</td>
+                                        <td class="hidden px-5 py-3.5 text-xs tabular-nums text-slate-500 sm:table-cell">{{ formatSize(log.size) }}</td>
+                                        <td class="px-4 py-3.5 text-right text-xs text-slate-400 sm:px-5">{{ formatDate(log.date) }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-else-if="currentView === 'files'" class="mx-auto max-w-6xl space-y-5" @click.stop>
+                    <div class="sticky top-0 z-10 flex flex-col gap-2.5 rounded-2xl border border-slate-200/70 bg-white/85 p-2.5 shadow-soft backdrop-blur-xl sm:flex-row sm:items-center sm:gap-3">
+                        <div class="scroll-thin flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto text-[13px]">
+                            <button @click="navigateTo('')" class="flex flex-none items-center gap-2 rounded-lg px-2.5 py-1.5 font-semibold text-slate-800 transition hover:bg-slate-100">
+                                <i class="fa-solid fa-house text-[11px] text-indigo-500"></i>根目录
+                            </button>
+                            <template v-for="(part, index) in pathParts" :key="index">
+                                <i class="fa-solid fa-chevron-right flex-none px-0.5 text-[9px] text-slate-300"></i>
+                                <button @click="navigateTo(part.fullPath)" class="flex-none whitespace-nowrap rounded-lg px-2.5 py-1.5 font-medium text-slate-600 transition hover:bg-slate-100">{{ part.name }}</button>
+                            </template>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <template v-if="!isSelectionMode">
+                                <div class="relative flex-1 sm:flex-none">
+                                    <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-slate-400"></i>
+                                    <input v-model="searchQuery" type="text" placeholder="搜索"
+                                           class="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-3 text-[13px] outline-none transition-all placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 sm:w-28 sm:focus:w-44">
+                                </div>
+                                <div class="flex rounded-xl bg-slate-100 p-0.5">
+                                    <button @click="viewMode = 'list'" :class="['flex h-8 w-8 items-center justify-center rounded-[9px] text-[11px] transition', viewMode === 'list' ? 'bg-white text-indigo-600 shadow-soft' : 'text-slate-400 hover:text-slate-600']">
+                                        <i class="fa-solid fa-list"></i>
+                                    </button>
+                                    <button @click="viewMode = 'grid'" :class="['flex h-8 w-8 items-center justify-center rounded-[9px] text-[11px] transition', viewMode === 'grid' ? 'bg-white text-indigo-600 shadow-soft' : 'text-slate-400 hover:text-slate-600']">
+                                        <i class="fa-solid fa-table-cells-large"></i>
+                                    </button>
+                                </div>
+                                <button @click="createFolderModal.show = true"
+                                        class="flex h-9 items-center gap-2 rounded-xl bg-slate-900 px-3.5 text-[13px] font-medium text-white transition hover:bg-slate-800 active:scale-95">
+                                    <i class="fa-solid fa-folder-plus text-[11px]"></i><span class="hidden sm:inline">新建</span>
+                                </button>
+                            </template>
+                            <template v-else>
+                                <button @click="selectAll" class="h-9 rounded-xl border border-slate-200 bg-white px-3 text-[13px] font-medium text-slate-600 transition hover:bg-slate-50">全选</button>
+                                <button @click="invertSelection" class="h-9 rounded-xl border border-slate-200 bg-white px-3 text-[13px] font-medium text-slate-600 transition hover:bg-slate-50">反选</button>
+                            </template>
+                            <button @click="toggleSelectionMode" :title="isSelectionMode ? '退出多选' : '进入多选'"
+                                    :class="['flex h-9 w-9 items-center justify-center rounded-xl text-[13px] transition',
+                                             isSelectionMode ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/30' : 'border border-slate-200 bg-white text-slate-500 hover:text-indigo-600']">
+                                <i class="fa-solid fa-check-double"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-if="sortedFiles.length === 0" class="rounded-4xl border border-slate-100 bg-white py-20 text-center shadow-soft">
+                        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-50 text-2xl text-slate-300">
+                            <i :class="searchQuery ? 'fa-solid fa-magnifying-glass' : 'fa-regular fa-folder-open'"></i>
+                        </div>
+                        <p class="text-[15px] font-medium text-slate-700">{{ searchQuery ? '没有匹配的文件' : '这个文件夹是空的' }}</p>
+                        <p class="mt-1 text-sm text-slate-400">{{ searchQuery ? '换个关键词试试，或清空搜索框' : '上传文件后它们会出现在这里' }}</p>
+                        <button v-if="searchQuery" @click="searchQuery = ''" class="mt-5 h-9 rounded-xl border border-slate-200 bg-white px-4 text-[13px] font-medium text-slate-600 transition hover:bg-slate-50">清空搜索</button>
+                        <button v-else @click="pickFiles" class="mt-5 h-9 rounded-xl bg-slate-900 px-4 text-[13px] font-medium text-white transition hover:bg-slate-800">上传文件</button>
+                    </div>
+
+                    <div v-else-if="viewMode === 'list'" class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-soft">
+                        <table class="w-full text-left">
+                            <thead class="border-b border-slate-100 bg-slate-50/70 text-[11px] uppercase tracking-wide text-slate-400">
+                                <tr>
+                                    <th v-if="isSelectionMode" class="w-12 py-3 pl-4 sm:pl-5">
+                                        <input type="checkbox" class="cbx" :checked="isAllSelected" @change="toggleSelectAll">
+                                    </th>
+                                    <th class="px-4 py-3 font-medium sm:px-5">名称</th>
+                                    <th class="hidden w-28 px-5 py-3 font-medium sm:table-cell">大小</th>
+                                    <th class="w-20 px-4 py-3 text-right font-medium sm:w-40 sm:px-5">修改时间</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50 text-sm">
+                                <tr v-for="file in sortedFiles" :key="file.key"
+                                    :class="['group cursor-default select-none transition', selectedFiles.includes(file.key) ? 'bg-indigo-50/70' : 'hover:bg-slate-50/70']"
+                                    @contextmenu.prevent.stop="showContextMenu($event, file)"
+                                    @click="handleRowClick(file)">
+                                    <td v-if="isSelectionMode" class="w-12 py-3.5 pl-4 sm:pl-5" @click.stop>
+                                        <input type="checkbox" class="cbx" :value="file.key" v-model="selectedFiles">
+                                    </td>
+                                    <td class="max-w-0 px-4 py-3.5 sm:px-5">
+                                        <div class="flex items-center gap-3.5">
+                                            <div :class="['flex h-9 w-9 flex-none items-center justify-center rounded-xl text-[15px] transition-transform group-hover:scale-105',
+                                                          file.isFolder ? 'bg-amber-50 text-amber-500' : fileTint(file)]">
+                                                <i :class="getFileIcon(file)"></i>
+                                            </div>
+                                            <span class="truncate font-medium text-slate-700 transition-colors group-hover:text-indigo-600">{{ getDisplayName(file.key) }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="hidden px-5 py-3.5 text-xs tabular-nums text-slate-400 sm:table-cell">{{ file.isFolder ? '—' : formatSize(file.size) }}</td>
+                                    <td class="px-4 py-3.5 text-right text-xs text-slate-400 sm:px-5">{{ file.uploaded ? formatDate(file.uploaded) : '—' }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div v-else class="grid grid-cols-2 gap-3.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                        <div v-for="file in sortedFiles" :key="file.key"
+                             :class="['card-hover group relative flex cursor-pointer flex-col items-center gap-3 rounded-2xl border bg-white p-4',
+                                      selectedFiles.includes(file.key) ? 'border-indigo-300 bg-indigo-50/50 ring-2 ring-indigo-500/20' : 'border-slate-100 shadow-soft hover:border-slate-200']"
+                             @click="handleRowClick(file)"
+                             @contextmenu.prevent.stop="showContextMenu($event, file)">
+                            <div v-if="isSelectionMode" class="absolute right-2.5 top-2.5 z-10" @click.stop>
+                                <input type="checkbox" class="cbx" :value="file.key" v-model="selectedFiles">
+                            </div>
+                            <div :class="['flex h-14 w-14 items-center justify-center rounded-2xl text-[26px] transition-transform duration-300 group-hover:scale-110',
+                                          file.isFolder ? 'bg-amber-50 text-amber-500' : fileTint(file)]">
+                                <i :class="getFileIcon(file)"></i>
+                            </div>
+                            <div class="w-full text-center">
+                                <div class="truncate px-1 text-[12.5px] font-medium text-slate-700 transition-colors group-hover:text-indigo-600">{{ getDisplayName(file.key) }}</div>
+                                <div class="mt-0.5 text-[10.5px] tabular-nums text-slate-400">{{ file.isFolder ? '文件夹' : formatSize(file.size) }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
